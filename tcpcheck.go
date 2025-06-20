@@ -6,18 +6,22 @@ import (
 	"os"
 	"strconv"
 	"time"
+	"flag"
 
 	"github.com/fatih/color"
 )
 
 func main() {
-	if len(os.Args) != 3 {
-		fmt.Println("Usage: tcpcheck <IP> <Port>")
+	delay := flag.Float64("t", 0.5, "Delay conections in seconds")
+	flag.Parse()
+
+	if flag.NArg() != 2 {
+		fmt.Println("Usage: tcpcheck [-t seconds] <IP> <Port>")
 		os.Exit(1)
 	}
 
-	ip := os.Args[1]
-	portStr := os.Args[2]
+	ip := flag.Arg(0)
+	portStr := flag.Arg(1)
 	port, err := strconv.Atoi(portStr)
 	if err != nil {
 		fmt.Println("Invalid port number")
@@ -26,8 +30,8 @@ func main() {
 
 	for {
 		start := time.Now()
-                addr := fmt.Sprintf("[%s]:%d", ip, port)
-                conn, err := net.DialTimeout("tcp", addr, time.Second)
+		addr := fmt.Sprintf("[%s]:%d", ip, port)
+		conn, err := net.DialTimeout("tcp", addr, time.Second)
 		elapsed := time.Since(start)
 		pingMs := elapsed.Seconds() * 1000
 
@@ -40,18 +44,25 @@ func main() {
 			pingColor = color.New(color.FgHiRed).SprintFunc()
 		}
 
+		timestamp := time.Now().Format("2006-01-02 15:04:05.000")
+
 		if err == nil {
 			conn.Close()
-			fmt.Printf("Status: %s | Ping: %s | Port: %s | Protocol: %s\n",
+			fmt.Printf("[%s] Status: %s | Ping: %s | Port: %s | Protocol: %s\n",
+				timestamp,
 				color.HiGreenString("Connected"),
 				pingColor(fmt.Sprintf("%.0fms", pingMs)),
 				color.HiGreenString("%d", port),
 				color.HiGreenString("TCP"),
 			)
 		} else {
-			fmt.Printf("Status: %s - %s\n", color.HiRedString("Could not connect "), color.HiRedString(err.Error()))
+			fmt.Printf("[%s] Status: %s - %s\n",
+				timestamp,
+				color.HiRedString("Could not connect"),
+				color.HiRedString(err.Error()),
+			)
 		}
 
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(time.Duration(*delay * float64(time.Second)))
 	}
 }
